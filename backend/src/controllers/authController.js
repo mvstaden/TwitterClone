@@ -76,10 +76,12 @@ export const logout = async (req, res) => {
   }
 };
 
-export const getAuthenticatedUser = async (req,res) => {
+export const getAuthenticatedUser = async (req, res) => {
   try {
-    const user = await User.findById(req.user._id)
+    const user = await User.findById(req.user._id);
+    res.status(200).json({ user: user._id });
   } catch (error) {
-    
+    console.log(`Error authenticating user out:${error.message}`);
+    return res.status(500).json({ message: "Internal server error" });
   }
-}
+};
