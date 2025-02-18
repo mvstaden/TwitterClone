@@ -19,6 +19,12 @@ export const signup = async (req, res) => {
       return res.status(400).json({ message: "Email is already taken" });
     }
 
+    if (password.length < 6) {
+      return res
+        .status(400)
+        .json({ message: "Password needs to be atleast 6 characters" });
+    }
+
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
@@ -31,7 +37,9 @@ export const signup = async (req, res) => {
     if (newUser) {
       generateTokenAndSetCookie(newUser._id, res);
       await newUser.save();
-      res.status(200).json({ message: "User successfully added" });
+      res
+        .status(200)
+        .json({ message: "User successfully added", data: newUser });
     }
   } catch (error) {
     console.log(`Error adding new user:${error.message}`);
@@ -40,9 +48,38 @@ export const signup = async (req, res) => {
 };
 
 export const login = async (req, res) => {
-  res.json({ message: "You hit login endpoint" });
+  try {
+    const { username, password } = req.body;
+    const user = await User.findOne({ username });
+    //Compare password
+    const isPassword = await bcrypt.compare(password, user.password);
+    if (!user || !isPassword) {
+      return res.status(400).json({ message: "Invalid username or password" });
+    }
+
+    generateTokenAndSetCookie(user._id, res);
+
+    res.status(200).json({ message: "Login successfull", data: user });
+  } catch (error) {
+    console.log(`Error logging in:${error.message}`);
+    return res.status(500).json({ message: "Internal server error" });
+  }
 };
 
 export const logout = async (req, res) => {
-  res.json({ message: "You hit logout endpoint" });
+  try {
+    res.cookie("auth_token", { maxAge: 0 });
+    res.status(200).json({ message: "Logged out successfully" });
+  } catch (error) {
+    console.log(`Error logging out:${error.message}`);
+    return res.status(500).json({ message: "Internal server error" });
+  }
 };
+
+export const getAuthenticatedUser = async (req,res) => {
+  try {
+    const user = await User.findById(req.user._id)
+  } catch (error) {
+    
+  }
+}
