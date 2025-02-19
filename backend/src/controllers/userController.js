@@ -1,3 +1,4 @@
+import Notification from "../models/notificationModel.js";
 import User from "../models/userModel.js";
 
 export const getUserProfile = async (req, res) => {
@@ -20,6 +21,7 @@ export const followUnfollowUser = async (req, res) => {
     const userToFollow = await User.findById(id);
     const currentUser = await User.findById(req.user._id);
 
+    //convert id to string as req.user._id is in type of object
     if (id === req.user._id.toString()) {
       return res
         .status(400)
@@ -31,18 +33,67 @@ export const followUnfollowUser = async (req, res) => {
     const isFollowing = currentUser.following.includes(id);
     if (isFollowing) {
       //unfollow user
-      await User.findByIdAndUpdate(id, { $pull: { followers: req.user._id } });
-      await User.findByIdAndUpdate(req.user._id, { $pull: { following: id } });
+      await User.findByIdAndUpdate(id, {
+        $pull: { followers: currentUser._id },
+      });
+      await User.findByIdAndUpdate(currentUser._id, {
+        $pull: { following: id },
+      });
+      //toDo return the id of the user as a response
       res.status(200).json({ message: "User unfollowed successfully" });
     } else {
       //follow user
-      await User.findByIdAndUpdate(id, { $push: { followers: req.user._id } });
-      await User.findByIdAndUpdate(req.user._id, { $push: { following: id } });
-      res.status(200).json({ message: "User followed successfully" });
+      await User.findByIdAndUpdate(id, {
+        $push: { followers: currentUser._id },
+      });
+      await User.findByIdAndUpdate(currentUser._id, {
+        $push: { following: id },
+      });
+
       //Send notification to user
+      const newNotification = new Notification({
+        type: "follow",
+        from: currentUser._id,
+        to: userToFollow._id,
+      });
+
+      await newNotification.save();
+
+      //toDo return the id of the user as a response
+      //default
+      res.status(200).json({ message: "User followed successfully" });
     }
   } catch (error) {
     res.status(500).json({ message: "Internal server error" });
     console.log(`Error following or unfollow user: ${error.message}`);
+  }
+};
+
+export const getSuggestedUsers = async (req, res) => {
+  try {
+    const currentUser = req.user._id;
+    const usersFollowedByMe = await User.findById(currentUser).select(
+      "following"
+    );
+    const users = await User.aggregate([
+      {
+        $match: {
+          _id: { $ne: currentUser },
+        },
+      },
+      { $sample: { size: 10 } },
+    ]);
+
+    const filteredUsers = users.filter(
+      (user) => !usersFollowedByMe.following.includes(user._id)
+    );
+    const suggestedUsers = filteredUsers.slice(0, 4);
+
+    suggestedUsers.forEach((user) => (user.password = null));
+
+    res.status(200).json(suggestedUsers);
+  } catch (error) {
+    console.log(`Error getting suggested users: ${error.message}`);
+    res.status(500).json({ message: "Internal Server Error" });
   }
 };
