@@ -7,6 +7,7 @@ import { v2 as cloudinary } from "cloudinary";
 //API imports
 import authRoutes from "./routes/authRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
+import postRoutes from "./routes/postRoutes.js";
 
 //DB import
 import connectMongoDB from "./db/mongoDB.js";
@@ -30,6 +31,7 @@ const PORT = process.env.PORT;
 //Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
+app.use("/api/posts", postRoutes);
 
 app.listen(PORT, () => {
   connectMongoDB();
